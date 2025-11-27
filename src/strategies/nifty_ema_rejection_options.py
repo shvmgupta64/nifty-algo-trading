@@ -302,7 +302,7 @@ class NiftyEMARejectionStrategyOptions:
                 candle["close"] > candle["open"]
                 and candle["close"] > ema15
                 and lower_wick >= 15
-                and candle["low"] <= ema21
+                and min(abs(candle["low"] - ema15), abs(candle["low"] - ema21)) <= 5
                 and upper_wick <= 4
         )
 
@@ -336,7 +336,7 @@ class NiftyEMARejectionStrategyOptions:
         type3 = (
                 candle["open"] > candle["close"]
                 and upper_wick >= 15
-                and candle["high"] >= ema21
+                and min(abs(candle["high"] - ema15), abs(candle["high"] - ema21)) <= 5
                 and lower_wick <= 4
                 and candle["close"] < ema15
         )
