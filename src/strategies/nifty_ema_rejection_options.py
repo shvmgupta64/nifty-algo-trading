@@ -208,7 +208,7 @@ class NiftyEMARejectionStrategyOptions:
         opt_candles = self._fetch_recent_candles(opt_token)
 
         option_ltp = self.client.get_ltp(f"NFO:{tsym}")
-        opt_trigger_candle = opt_candles[-1]
+        opt_trigger_candle = opt_candles[-2]
         opt_low = opt_trigger_candle["low"]
         opt_close = opt_trigger_candle["close"]
 
@@ -216,11 +216,10 @@ class NiftyEMARejectionStrategyOptions:
         # Using percentage move from spot instead of actual option candle.
         # This is a simplification: option SL = entry_price *
 
-        pct = opt_low / opt_close
-        stop_loss = option_ltp * pct
+        stop_loss = opt_low
 
         # Risk-reward 1:2
-        target = option_ltp + 2 * (opt_close - stop_loss)
+        target = opt_close + 2 * (opt_close - opt_low)
 
         trade = self.order_manager.buy_option_trade(
             symbol=tsym,
@@ -249,7 +248,7 @@ class NiftyEMARejectionStrategyOptions:
         opt_token = get_instrument_token(tsym)
         opt_candles = self._fetch_recent_candles(opt_token)
 
-        opt_trigger_candle = opt_candles[-1]
+        opt_trigger_candle = opt_candles[-2]
         opt_low = opt_trigger_candle["low"]
         opt_close = opt_trigger_candle["close"]
         if not tsym:
@@ -258,10 +257,11 @@ class NiftyEMARejectionStrategyOptions:
         option_ltp = self.client.get_ltp(f"NFO:{tsym}")
 
         # Using previous low of underlying as proxy for option SL (documented assumption)
-        pct = opt_low / opt_close
-        stop_loss = option_ltp * pct
+        #stop_loss = option_ltp - option_ltp * pct
+        stop_loss = opt_low
 
-        target = option_ltp + 2 * (option_ltp - stop_loss)
+        # Risk-reward 1:2
+        target = opt_close + 2 * (opt_close - opt_low)
 
         trade = self.order_manager.buy_option_trade(
             symbol=tsym,
