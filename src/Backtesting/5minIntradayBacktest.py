@@ -29,12 +29,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # ========== CONFIGURATION ==========
-START_DATE = "2024-12-01"
-END_DATE = "2025-02-28"
+START_DATE = "2025-09-01"
+END_DATE = "2025-11-26"
 TIMEFRAME = "5minute"
 NIFTY_TOKEN = 256265
 QTY = 50
-RR_RATIO = 2
+RR_RATIO = 1.9
 
 BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
@@ -57,70 +57,87 @@ def calculate_angle(series, lookback=5):
 
 
 # ========== CANDLE FILTERS ==========
-def is_bullish_rejection(candle, ema15, ema21) :
+def is_bullish_rejection(candle, ema15, ema21):
 
-    body = candle["close"] - candle["open"]
-    lower_wick = candle["open"] - candle["low"]
-    upper_wick = candle["high"] - candle["close"]
+    if (ema15 < ema21):
+        return False
 
-    # TYPE 1: Strong body rejection
-    type1 = (
-            body >= 10
-            and candle["close"] > candle["open"] > ema15
-            and min(abs(candle["low"] - ema15), abs(candle["low"] - ema21)) <= 15
+    o = candle["open"]
+    c = candle["close"]
+    h = candle["high"]
+    l = candle["low"]
+
+    body = c - o
+    lower_wick = o - l
+    upper_wick = h - c
+
+    low_in_ema_zone = (
+            abs(candle["low"] - ema15) <= 7 or
+            abs(candle["low"] - ema21) <= 7
     )
 
-    # TYPE 2: Deep rejection with strong close
-    type2 = (
-            body >= 10
-            and candle["close"] > ema15
-            and candle["low"] <= ema21
-            and candle["close"] > candle["open"]
+    open_in_ema_zone = (
+            abs(candle["open"] - ema15) <= 7 or
+            abs(candle["open"] - ema21) <= 7
     )
+    # Must interact with EMA zone
 
-    # TYPE 3: Long lower wick rejection (weak body but strong tail)
-    type3 = (
-            candle["close"] > candle["open"]
-            and lower_wick >= 15
-            and candle["low"] <= ema21
-            and upper_wick <= 4
+    wick_rejection = (
+        (upper_wick < 4
+         and lower_wick >= 10
+         and c > o
+         and open_in_ema_zone)
+        or
+        (o > ema15
+         and c > o
+         and l < ema21
+         and upper_wick < 4
+         and lower_wick >= 10)
     )
+    body_rejection = body >= 10 and upper_wick <= body * 0.3 and low_in_ema_zone
 
-    return (type1 or type2 or type3)
+    return wick_rejection or body_rejection
+
 
 def is_bearish_rejection(candle, ema15, ema21) :
+    if (ema15 > ema21):
+        return False
+    o = candle["open"]
+    c = candle["close"]
+    h = candle["high"]
+    l = candle["low"]
 
-    body = candle["open"] - candle["close"]
-    upper_wick = candle["high"] - candle["open"]
-    lower_wick = candle["close"] - candle["low"]
+    body = o - c
+    upper_wick = h - o
+    lower_wick = c - l
 
-    # Avoid downside rejection (no strong buyer defense)
-    #no_lower_rejection = lower_wick <= 4
-
-    # TYPE 1: Strong body rejection
-    type1 = (
-            body >= 10
-            and ema15 > candle["open"] > candle["close"]
-            and min(abs(candle["high"] - ema15), abs(candle["high"] - ema21)) <= 15
+    high_in_ema_zone = (
+            abs(candle["high"] - ema15) <= 4 or
+            abs(candle["high"] - ema21) <= 4
     )
 
-    # TYPE 2: Deep pullback rejection
-    type2 = (
-            body >= 10
-            and candle["close"] < ema15
-            and candle["high"] >= ema21
-            and candle["open"] > candle["close"]
+    open_in_ema_zone = (
+            abs(candle["open"] - ema15) <= 4 or
+            abs(candle["open"] - ema21) <= 4
     )
 
-    # TYPE 3: Long upper wick rejection (weak body but strong tail)
-    type3 = (
-            candle["open"] > candle["close"]
-            and upper_wick >= 15
-            and candle["high"] >= ema21
-            and lower_wick <= 4
+    wick_rejection = (
+            (lower_wick < 4
+             and upper_wick >= 10
+             and o > c
+             and open_in_ema_zone)
+            or
+            (o < ema15
+             and o > c
+             and h > ema21
+             and lower_wick < 4
+             and upper_wick >= 10)
     )
 
-    return (type1 or type2 or type3)
+    # Body-based bearish rejection
+    body_rejection = body >= 10 and lower_wick <= body * 0.3 and high_in_ema_zone
+
+    return wick_rejection or body_rejection
 '''
 def is_bullish_rejection(candle, ema20, ema30):
     body = candle['close'] - candle['open']
@@ -181,7 +198,7 @@ class BacktestEngine:
                 continue
 
             print(row)
-            if row['ema20'] > row['ema30'] and row['slope20'] >= 30 and is_bullish_rejection(row, row['ema20'],
+            if row['ema20'] > row['ema30'] and row["slope20"] > 40 and abs(row['ema20'] - row['ema30']) >= 2 and is_bullish_rejection(row, row['ema20'],
                                                                                              row['ema30']):
             #if row['ema20'] > row['ema30'] and is_bullish_rejection(row, row['ema20'], row['ema30']):
 
@@ -195,7 +212,7 @@ class BacktestEngine:
                 if outcome == "SL_HIT":
                     daily_sl_count[current_day] += 1
 
-            elif row['ema20'] < row['ema30'] and row['slope20'] <= -30 and is_bearish_rejection(row, row['ema20'],
+            elif row['ema20'] < row['ema30'] and row["slope20"] < -40 and abs(row['ema20'] - row['ema30']) >= 2 and is_bearish_rejection(row, row['ema20'],
                                                                                                 row['ema30']):
             #elif row['ema20'] < row['ema30'] and is_bearish_rejection(row, row['ema20'], row['ema30']):
 
