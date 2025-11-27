@@ -1,0 +1,4 @@
+kiteconnect
+python-dotenv
+pandas
+loguru
