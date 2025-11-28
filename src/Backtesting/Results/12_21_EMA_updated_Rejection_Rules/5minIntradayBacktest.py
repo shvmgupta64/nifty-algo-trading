@@ -29,8 +29,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # ========== CONFIGURATION ==========
-START_DATE = "2025-11-01"
-END_DATE = "2025-11-26"
+START_DATE = "2025-09-01"
+END_DATE = "2025-11-25"
 TIMEFRAME = "5minute"
 NIFTY_TOKEN = 256265
 QTY = 50
@@ -198,7 +198,7 @@ class BacktestEngine:
                 continue
 
             print(row)
-            if row['ema20'] > row['ema30']  and abs(row['ema20'] - row['ema30']) >= 3 and is_bullish_rejection(row, row['ema20'],
+            if row['ema20'] > row['ema30']  and abs(row['ema20'] - row['ema30']) >= 2 and is_bullish_rejection(row, row['ema20'],
                                                                                              row['ema30']):
             #if row['ema20'] > row['ema30'] and is_bullish_rejection(row, row['ema20'], row['ema30']):
 
@@ -212,7 +212,7 @@ class BacktestEngine:
                 if outcome == "SL_HIT":
                     daily_sl_count[current_day] += 1
 
-            elif row['ema20'] < row['ema30']  and abs(row['ema20'] - row['ema30']) >= 3 and is_bearish_rejection(row, row['ema20'],
+            elif row['ema20'] < row['ema30']  and abs(row['ema20'] - row['ema30']) >= 2 and is_bearish_rejection(row, row['ema20'],
                                                                                                 row['ema30']):
             #elif row['ema20'] < row['ema30'] and is_bearish_rejection(row, row['ema20'], row['ema30']):
 

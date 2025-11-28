@@ -45,6 +45,7 @@ class NiftyEMARejectionStrategyOptions:
         self.cached_closes = []
         self.ema15_cache = []
         self.ema21_cache = []
+        self.processed_closed_trades = set()
 
     # ================= MAIN LOOP =================
 
@@ -74,7 +75,11 @@ class NiftyEMARejectionStrategyOptions:
 
             # ✅ Reset logic after trade closes
             for trade in self.order_manager.trades:
-                if trade.status != "OPEN" and self.current_trade_active:
+                # identify trade uniquely
+                trade_id = id(trade)
+
+                if trade.status != "OPEN" and trade_id not in self.processed_closed_trades:
+                    self.processed_closed_trades.add(trade_id)
 
                     if trade.status == "SL_HIT":
                         self.sl_count_today += 1
@@ -148,8 +153,8 @@ class NiftyEMARejectionStrategyOptions:
         ema21 = self.ema21_cache[-2]
         nifty_spot = closes[-1]
 
-        uptrend = ema15 > ema21 and ema_angle_is_up(self.ema15_cache[:-1])
-        downtrend = ema15 < ema21 and ema_angle_is_down(self.ema15_cache[:-1])
+        uptrend = ema15 > ema21 and abs(ema15 - ema21) > 3
+        downtrend = ema15 < ema21 and abs(ema15 - ema21) > 3
 
         if now.time() >= ENTRY_END_TIME:
             return
@@ -221,6 +226,18 @@ class NiftyEMARejectionStrategyOptions:
 
         # Risk-reward 1:2
         target = opt_close + 2 * (opt_close - opt_low)
+
+        logger.info(
+            "opt_low: ", opt_low
+        )
+
+        logger.info(
+            "opt_low: ", opt_low
+        )
+
+        logger.info(
+            "opt_low: ", opt_low
+        )
 
         trade = self.order_manager.buy_option_trade(
             symbol=tsym,
