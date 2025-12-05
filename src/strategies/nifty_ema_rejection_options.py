@@ -190,7 +190,7 @@ class NiftyEMARejectionStrategyOptions:
 
         if downtrend and bearish:
             logger.info("🔻 Bearish rejection + downtrend → PE Entry")
-            self._enter_short_pe(signal_candle, prev_candle, nifty_spot)
+            self._enter_short_pe(nifty_spot)
             self.last_signal_candle_time = signal_time
             self.current_trade_active = True
 
@@ -327,6 +327,12 @@ class NiftyEMARejectionStrategyOptions:
                  and l < ema21
                  and upper_wick < 4
                  and lower_wick >= 10)
+                or
+                (c > o
+                 and o < ema21
+                 and c > ema15
+                 and body >= 10
+                 and upper_wick < 4)
         )
         body_rejection = body >= 10 and upper_wick <= body * 0.3 and low_in_ema_zone
 
@@ -366,6 +372,12 @@ class NiftyEMARejectionStrategyOptions:
                  and h > ema21
                  and lower_wick < 4
                  and upper_wick >= 10)
+                or
+                (c < o
+                 and o > ema21
+                 and c < ema15
+                 and body >= 10
+                 and lower_wick < 4)
         )
 
         # Body-based bearish rejection
