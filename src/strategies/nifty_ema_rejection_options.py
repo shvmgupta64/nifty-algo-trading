@@ -95,7 +95,8 @@ class NiftyEMARejectionStrategyOptions:
 
     def _fetch_recent_candles(self, UNDERLYING_TOKEN):
         now = datetime.now(IST)
-        from_dt = (now - timedelta(days=1)).replace(hour=9, minute=15, second=0)
+        # ✅ Fetch enough history for EMA warmup
+        from_dt = (now - timedelta(days=7)).replace(hour=9, minute=15, second=0)
 
         try:
             return self.client.get_historical_candles(
@@ -132,7 +133,8 @@ class NiftyEMARejectionStrategyOptions:
         closes = [c["close"] for c in candles]
         self._update_ema_cache(closes)
 
-        if len(self.ema15_cache) < 35:
+        if len(self.ema15_cache) < 21:
+            logger.info("Skipping candle – EMA warmup not complete yet")
             return
 
         # ✅ USE ONLY CLOSED CANDLE
@@ -226,14 +228,6 @@ class NiftyEMARejectionStrategyOptions:
 
         # Risk-reward 1:2
         target = opt_close + 2 * (opt_close - opt_low)
-
-        logger.info(
-            "opt_low: ", opt_low
-        )
-
-        logger.info(
-            "opt_low: ", opt_low
-        )
 
         logger.info(
             "opt_low: ", opt_low
