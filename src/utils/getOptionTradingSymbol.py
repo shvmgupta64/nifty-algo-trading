@@ -25,11 +25,18 @@ def get_current_week_tuesday(date):
         return date - timedelta(days=days_back + 7)
 
 def get_next_week_tuesday(date):
-    # First upcoming Tuesday = current week's expiry
-    current_expiry = get_next_tuesday(date)
+    TUESDAY = 1
 
-    # Skip current week → next week's expiry
-    return current_expiry + timedelta(days=7)
+    # Find upcoming Tuesday of current week (or today if Tue)
+    days_to_tue = (TUESDAY - date.weekday()) % 7
+    current_week_tue = date + timedelta(days=days_to_tue)
+
+    # If today is Mon or Tue of expiry week → skip this expiry
+    if date.weekday() in (0, 1):
+        return current_week_tue + timedelta(days=7)
+
+    # Otherwise trade next upcoming expiry
+    return current_week_tue
 
 def get_last_tuesday_of_month(date):
     year = date.year

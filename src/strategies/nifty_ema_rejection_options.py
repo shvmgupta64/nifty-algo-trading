@@ -58,7 +58,7 @@ class NiftyEMARejectionStrategyOptions:
             # ✅ Do not process candles before 9:15 AM
             if now.time() < datetime.strptime("09:15:00", "%H:%M:%S").time():
                 import time
-                time.sleep(5)
+                time.sleep(2)
                 continue
 
             if now.time() >= FORCE_EXIT_TIME:
@@ -89,7 +89,7 @@ class NiftyEMARejectionStrategyOptions:
                     self.last_signal_candle_time = None
 
             import time
-            time.sleep(5)
+            time.sleep(2)
 
     # ================= DATA FETCH =================
 

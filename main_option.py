@@ -52,7 +52,7 @@ def main():
         # 4) Run strategy loop
         strategy.run()
 
-        logger.success("Test run completed successfully.")
+        logger.success("run completed successfully.")
 
     except Exception as e:
         logger.error(f"Error during test run: {str(e)}")
