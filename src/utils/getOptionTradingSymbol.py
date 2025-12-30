@@ -49,11 +49,17 @@ def get_last_tuesday_of_month(date):
 
     return last_date
 
+def month_code(dt: datetime) -> str:
+    m = dt.month
+    if 1 <= m <= 9:
+        return str(m)
+    return {10: "O", 11: "N", 12: "D"}[m]
 
 def get_expiry_code(today):
 
     #next_tue = get_next_tuesday(today)
     #last_tue = get_last_tuesday_of_month(today)
+    '''
     next_tue = get_next_week_tuesday(today)
     last_tue = get_last_tuesday_of_month(next_tue)
     year = next_tue.strftime("%y")
@@ -65,7 +71,23 @@ def get_expiry_code(today):
         return f"{year}{month}"     # 25DEC
     else:
         return f"{year}D{day}"      # 25D02
+    '''
+    next_exp = get_next_week_tuesday(today)  # your function
 
+    # monthly expiry = last Tuesday of that month (no day in symbol)
+    last_tue = get_last_tuesday_of_month(next_exp)
+
+    yy = next_exp.strftime("%y")
+
+    if next_exp.date() == last_tue.date():
+        # Monthly: NIFTY26JAN...
+        mon = next_exp.strftime("%b").upper()
+        return f"{yy}{mon}"
+    else:
+        # Weekly: NIFTY26106...
+        mcode = month_code(next_exp)
+        dd = next_exp.strftime("%d")
+        return f"{yy}{mcode}{dd}"
 
 # =========================================================
 # STRIKE SELECTION

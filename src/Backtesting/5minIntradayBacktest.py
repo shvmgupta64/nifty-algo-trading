@@ -29,8 +29,8 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # ========== CONFIGURATION ==========
-START_DATE = "2025-11-01"
-END_DATE = "2025-11-26"
+START_DATE = "2025-12-01"
+END_DATE = "2025-12-10"
 TIMEFRAME = "5minute"
 NIFTY_TOKEN = 256265
 QTY = 50

@@ -37,6 +37,7 @@ class ZerodhaClient:
             f"from={from_dt}, to={to_dt}, interval={interval}"
         )
 
+
         return self.kite.historical_data(
             instrument_token, from_dt, to_dt, interval, continuous=False, oi=False
         )

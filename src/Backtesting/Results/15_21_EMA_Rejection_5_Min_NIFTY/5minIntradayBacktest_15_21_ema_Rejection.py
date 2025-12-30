@@ -181,7 +181,7 @@ class BacktestEngine:
                 continue
 
             print(row)
-            if row['ema20'] > row['ema30'] and row['slope20'] >= 30 and is_bullish_rejection(row, row['ema20'],
+            if row['ema20'] > row['ema30'] and is_bullish_rejection(row, row['ema20'],
                                                                                              row['ema30']):
             #if row['ema20'] > row['ema30'] and is_bullish_rejection(row, row['ema20'], row['ema30']):
 
@@ -195,7 +195,7 @@ class BacktestEngine:
                 if outcome == "SL_HIT":
                     daily_sl_count[current_day] += 1
 
-            elif row['ema20'] < row['ema30'] and row['slope20'] <= -30 and is_bearish_rejection(row, row['ema20'],
+            elif row['ema20'] < row['ema30']  and is_bearish_rejection(row, row['ema20'],
                                                                                                 row['ema30']):
             #elif row['ema20'] < row['ema30'] and is_bearish_rejection(row, row['ema20'], row['ema30']):
 

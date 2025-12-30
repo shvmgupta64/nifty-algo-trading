@@ -22,7 +22,7 @@ IST = pytz.timezone("Asia/Kolkata")
 # NOTE: NIFTY 50 underlying token is commonly 256265, but verify from instruments dump.
 NIFTY_UNDERLYING_TOKEN = 256265
 
-ENTRY_END_TIME = datetime.strptime("15:00:00", "%H:%M:%S").time()
+ENTRY_END_TIME = datetime.strptime("15:10:00", "%H:%M:%S").time()
 FORCE_EXIT_TIME = datetime.strptime("15:15:00", "%H:%M:%S").time()
 
 
@@ -35,7 +35,7 @@ class NiftyEMARejectionStrategyOptions:
         self.last_signal_candle_time: Optional[datetime] = None
         self.last_processed_candle_time: Optional[datetime] = None
 
-        self.quantity = 75
+        self.quantity = 65
 
         # ✅ Risk control counters
         self.sl_count_today = 0
@@ -112,20 +112,56 @@ class NiftyEMARejectionStrategyOptions:
     # ================= EMA CACHING ENGINE =================
 
     def _update_ema_cache(self, closes: List[float]):
+
+        '''
         if not self.cached_closes:
             # Initial warmup
             self.cached_closes = closes
-            self.ema15_cache = ema(closes, 15)
-            self.ema21_cache = ema(closes, 21)
+            #self.ema15_cache = ema(closes, 15)
+            #self.ema21_cache = ema(closes, 21)
+            self.ema15_cache = self.initialize_ema(closes, 15)
+            self.ema21_cache = self.initialize_ema(closes, 21)
             return
+        '''
+
+        self.cached_closes = closes
+        # self.ema15_cache = ema(closes, 15)
+        # self.ema21_cache = ema(closes, 21)
+        self.ema15_cache = self.initialize_ema(closes, 15)
+        self.ema21_cache = self.initialize_ema(closes, 21)
 
         # Only process newly added candle
         new_closes = closes[len(self.cached_closes):]
+        alpha15 = 2 / (15 + 1)
+        alpha21 = 2 / (21 + 1)
+
+        for price in new_closes:
+            self.ema15_cache.append(
+                price * alpha15 + self.ema15_cache[-1] * (1 - alpha15)
+            )
+            self.ema21_cache.append(
+                price * alpha21 + self.ema21_cache[-1] * (1 - alpha21)
+            )
+
+        self.cached_closes = closes
+        '''
         for price in new_closes:
             self.ema15_cache.append((price * 2 / 16) + self.ema15_cache[-1] * (1 - 2 / 16))
             self.ema21_cache.append((price * 2 / 22) + self.ema21_cache[-1] * (1 - 2 / 22))
         self.cached_closes = closes
+        '''
 
+    def initialize_ema(self, closes, period):
+        sma = sum(closes[:period]) / period
+        ema_values = [sma]
+
+        alpha = 2 / (period + 1)
+
+        for price in closes[period:]:
+            ema = price * alpha + ema_values[-1] * (1 - alpha)
+            ema_values.append(ema)
+
+        return ema_values
     # ================= PROCESS LOGIC =================
 
     def _process_candles(self, candles: List[Dict], now: datetime):
@@ -148,8 +184,8 @@ class NiftyEMARejectionStrategyOptions:
         self.last_processed_candle_time = signal_time
 
         # ✅ ENSURE candle is really closed
-        if now < signal_time + timedelta(minutes=5):
-            return
+        #if now < signal_time + timedelta(minutes=5):
+        #    return
 
         ema15 = self.ema15_cache[-2]
         ema21 = self.ema21_cache[-2]
@@ -336,6 +372,7 @@ class NiftyEMARejectionStrategyOptions:
 
         if (ema15 > ema21):
             return False
+
         o = candle["open"]
         c = candle["close"]
         h = candle["high"]
