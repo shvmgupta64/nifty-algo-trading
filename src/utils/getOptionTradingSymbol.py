@@ -95,9 +95,9 @@ def get_expiry_code(today):
 
 def get_strike_price(ltp, trend):
     if trend.upper() == "UP":
-        return int(math.ceil(ltp / 50) * 50)
-    elif trend.upper() == "DOWN":
         return int(math.floor(ltp / 50) * 50)
+    elif trend.upper() == "DOWN":
+        return int(math.ceil(ltp / 50) * 50)
     else:
         raise ValueError("Trend must be UP or DOWN")
 

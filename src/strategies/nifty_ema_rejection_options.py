@@ -16,6 +16,13 @@ from src.utils.candle_utils import (
 )
 from src.utils.order_manager import OrderManager
 from src.utils.logger import logger
+from pathlib import Path
+from dotenv import load_dotenv
+import os
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+ENV_FILE_PATH = PROJECT_ROOT / ".env"
+load_dotenv(ENV_FILE_PATH)
 
 IST = pytz.timezone("Asia/Kolkata")
 
@@ -24,6 +31,8 @@ NIFTY_UNDERLYING_TOKEN = 256265
 
 ENTRY_END_TIME = datetime.strptime("15:10:00", "%H:%M:%S").time()
 FORCE_EXIT_TIME = datetime.strptime("15:15:00", "%H:%M:%S").time()
+
+TRADE_QTY = os.getenv("NIFTY_LOT_SIZE")
 
 
 class NiftyEMARejectionStrategyOptions:
@@ -35,7 +44,7 @@ class NiftyEMARejectionStrategyOptions:
         self.last_signal_candle_time: Optional[datetime] = None
         self.last_processed_candle_time: Optional[datetime] = None
 
-        self.quantity = 65
+        self.quantity = TRADE_QTY
 
         # ✅ Risk control counters
         self.sl_count_today = 0
@@ -341,8 +350,8 @@ class NiftyEMARejectionStrategyOptions:
         )
 
         open_in_ema_zone = (
-                abs(candle["open"] - ema15) <= 7 or
-                abs(candle["open"] - ema21) <= 7
+                abs(candle["open"] - ema15) <= 4 or
+                abs(candle["open"] - ema21) <= 4
         )
         # Must interact with EMA zone
 
