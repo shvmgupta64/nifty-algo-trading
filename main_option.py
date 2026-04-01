@@ -26,7 +26,7 @@ def main():
         return
 
     try:
-        # ✅ Authenticate and get Kite session
+        # ✅ Authenticate and get Kite
         kite = init_kite(API_KEY, API_SECRET)
         # ✅ Pass authenticated kite to client
         client = ZerodhaClient(kite)

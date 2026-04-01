@@ -32,11 +32,12 @@ class ZerodhaClient:
         Wraps kite.historical_data.
         Returns list of dicts with keys: date, open, high, low, close, volume
         """
+        """
         logger.debug(
             f"Fetching candles token={instrument_token}, "
             f"from={from_dt}, to={to_dt}, interval={interval}"
         )
-
+        """
 
         return self.kite.historical_data(
             instrument_token, from_dt, to_dt, interval, continuous=False, oi=False

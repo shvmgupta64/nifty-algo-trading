@@ -29,10 +29,12 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 # ========== CONFIGURATION ==========
-START_DATE = "2025-12-01"
-END_DATE = "2025-12-10"
+START_DATE = "2025-04-01"
+END_DATE = "2025-06-30"
 TIMEFRAME = "5minute"
 NIFTY_TOKEN = 256265
+INDIA_VIX_TOKEN = 264969  # Zerodha instrument token for INDIA VIX
+
 QTY = 50
 RR_RATIO = 1.9
 
@@ -166,6 +168,21 @@ class BacktestEngine:
 
         candles = self.fetch_data()
         df = pd.DataFrame(candles)
+
+        df = pd.DataFrame(candles)
+        df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
+
+        # ---- Load & merge India VIX ----
+        vix_df = self.load_india_vix()
+
+        df = pd.merge_asof(
+            df.sort_values("date"),
+            vix_df.sort_values("date"),
+            on="date",
+            direction="backward"
+        )
+
+
         df['ema20'] = ema(df['close'], 15)
         df['ema30'] = ema(df['close'], 21)
         df['slope20'] = calculate_angle(df['ema20'])
@@ -179,6 +196,7 @@ class BacktestEngine:
             row = df.iloc[i]
 
             trade_day = row['date'].date()
+            vix_entry = row["vix"]
 
             # Reset when day changes
             if current_day != trade_day:
@@ -207,7 +225,23 @@ class BacktestEngine:
 
                 target = entry + RR_RATIO * (entry - sl)
                 outcome, exit_price, exit_time = self.simulate_trade(df, i, entry, sl, target, direction="CE")
-                self.trades.append(self.log_trade(row['date'], exit_time, "CE", entry, sl, target, outcome, exit_price))
+                #self.trades.append(self.log_trade(row['date'], exit_time, "CE", entry, sl, target, outcome, exit_price))
+                vix_exit = df.loc[df["date"] == exit_time, "vix"].iloc[0]
+
+                self.trades.append(
+                    self.log_trade(
+                        row["date"],
+                        exit_time,
+                        "CE",
+                        entry,
+                        sl,
+                        target,
+                        outcome,
+                        exit_price,
+                        vix_entry,
+                        vix_exit
+                    )
+                )
                 active_trade_until = exit_time
                 if outcome == "SL_HIT":
                     daily_sl_count[current_day] += 1
@@ -220,7 +254,23 @@ class BacktestEngine:
                 sl = row['high']
                 target = entry - RR_RATIO * (sl - entry)
                 outcome, exit_price, exit_time = self.simulate_trade(df, i, entry, sl, target, direction="PE")
-                self.trades.append(self.log_trade(row['date'], exit_time, "PE", entry, sl, target, outcome, exit_price))
+                #self.trades.append(self.log_trade(row['date'], exit_time, "PE", entry, sl, target, outcome, exit_price))
+                vix_exit = df.loc[df["date"] == exit_time, "vix"].iloc[0]
+
+                self.trades.append(
+                    self.log_trade(
+                        row["date"],
+                        exit_time,
+                        "PE",
+                        entry,
+                        sl,
+                        target,
+                        outcome,
+                        exit_price,
+                        vix_entry,
+                        vix_exit
+                    )
+                )
                 active_trade_until = exit_time
                 if outcome == "SL_HIT":
                     daily_sl_count[current_day] += 1
@@ -309,7 +359,23 @@ class BacktestEngine:
         }
     '''
 
-    def log_trade(self, entry_time, exit_time, direction, entry, sl, target, outcome, exit_price):
+    def load_india_vix(self):
+        start = datetime.strptime(START_DATE, "%Y-%m-%d")
+        end = datetime.strptime(END_DATE, "%Y-%m-%d")
+
+        data = self.client.get_historical_candles(
+            INDIA_VIX_TOKEN, start, end, TIMEFRAME
+        )
+
+        df = pd.DataFrame(data)
+        df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
+        df.rename(columns={"close": "vix"}, inplace=True)
+
+        return df[["date", "vix"]]
+
+
+    def log_trade(self, entry_time, exit_time, direction, entry, sl, target, outcome, exit_price, vix_entry,
+    vix_exit):
         if direction == "CE":
             pnl = exit_price - entry
         else:
@@ -326,7 +392,9 @@ class BacktestEngine:
             "Outcome": outcome,
             "Risk": abs(entry - sl),
             "Reward": abs(target - entry),
-            "PnL": pnl
+            "PnL": pnl,
+            "VIX_Entry": vix_entry,
+            "VIX_Exit": vix_exit
         }
 
     def export_csv(self):

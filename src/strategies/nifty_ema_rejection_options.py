@@ -32,7 +32,9 @@ NIFTY_UNDERLYING_TOKEN = 256265
 ENTRY_END_TIME = datetime.strptime("15:10:00", "%H:%M:%S").time()
 FORCE_EXIT_TIME = datetime.strptime("15:15:00", "%H:%M:%S").time()
 
-TRADE_QTY = os.getenv("NIFTY_LOT_SIZE")
+LOT_SIZE = int(os.getenv("NIFTY_LOT_SIZE", 0))
+TRADE_LOT = int(os.getenv("NIFTY_TRADING_LOT", 0))
+TRADE_QTY = LOT_SIZE * TRADE_LOT
 
 
 class NiftyEMARejectionStrategyOptions:
@@ -184,7 +186,6 @@ class NiftyEMARejectionStrategyOptions:
 
         # ✅ USE ONLY CLOSED CANDLE
         signal_candle = candles[-2]
-        prev_candle = candles[-3]
         signal_time = signal_candle["date"].astimezone(IST)
 
         # ✅ Prevent duplicate processing
@@ -193,8 +194,8 @@ class NiftyEMARejectionStrategyOptions:
         self.last_processed_candle_time = signal_time
 
         # ✅ ENSURE candle is really closed
-        #if now < signal_time + timedelta(minutes=5):
-        #    return
+        if now < signal_time + timedelta(minutes=5):
+            return
 
         ema15 = self.ema15_cache[-2]
         ema21 = self.ema21_cache[-2]
@@ -257,10 +258,10 @@ class NiftyEMARejectionStrategyOptions:
         if not tsym:
             return
 
-        opt_token = get_instrument_token(tsym)
+        resolvedSym, opt_token = get_instrument_token(tsym)
         opt_candles = self._fetch_recent_candles(opt_token)
 
-        option_ltp = self.client.get_ltp(f"NFO:{tsym}")
+        option_ltp = self.client.get_ltp(f"NFO:{resolvedSym}")
         opt_trigger_candle = opt_candles[-2]
         opt_low = opt_trigger_candle["low"]
         opt_close = opt_trigger_candle["close"]
@@ -279,7 +280,7 @@ class NiftyEMARejectionStrategyOptions:
         )
 
         trade = self.order_manager.buy_option_trade(
-            symbol=tsym,
+            symbol=resolvedSym,
             qty=self.quantity,
             entry_price=option_ltp,
             stop_loss=stop_loss,
@@ -300,9 +301,10 @@ class NiftyEMARejectionStrategyOptions:
         """
         #pe_strike = get_pe_strike_for_short(spot_price)
         tsym = get_nifty_option_symbol(spot_price, "DOWN")
+        logger.info(tsym)
         if not tsym:
             return
-        opt_token = get_instrument_token(tsym)
+        resolvedSym, opt_token = get_instrument_token(tsym)
         opt_candles = self._fetch_recent_candles(opt_token)
 
         opt_trigger_candle = opt_candles[-2]
@@ -311,7 +313,7 @@ class NiftyEMARejectionStrategyOptions:
         if not tsym:
             return
 
-        option_ltp = self.client.get_ltp(f"NFO:{tsym}")
+        option_ltp = self.client.get_ltp(f"NFO:{resolvedSym}")
 
         # Using previous low of underlying as proxy for option SL (documented assumption)
         #stop_loss = option_ltp - option_ltp * pct
@@ -321,7 +323,7 @@ class NiftyEMARejectionStrategyOptions:
         target = opt_close + 2 * (opt_close - opt_low)
 
         trade = self.order_manager.buy_option_trade(
-            symbol=tsym,
+            symbol=resolvedSym,
             qty=self.quantity,
             entry_price=option_ltp,
             stop_loss=stop_loss,
@@ -334,6 +336,9 @@ class NiftyEMARejectionStrategyOptions:
         # ================= REJECTION LOGIC =================
 
     def is_bullish_rejection(self, candle: Dict, ema15: float, ema21: float) -> bool:
+
+        if (ema15 < ema21):
+            return False
 
         o = candle["open"]
         c = candle["close"]
@@ -359,7 +364,7 @@ class NiftyEMARejectionStrategyOptions:
                 (upper_wick < 4
                  and lower_wick >= 10
                  and c > o
-                 and open_in_ema_zone)
+                 and (open_in_ema_zone or low_in_ema_zone))
                 or
                 (o > ema15
                  and c > o
@@ -373,7 +378,7 @@ class NiftyEMARejectionStrategyOptions:
                  and body >= 10
                  and upper_wick < 4)
         )
-        body_rejection = body >= 10 and upper_wick <= body * 0.3 and low_in_ema_zone
+        body_rejection = body >= 10 and upper_wick <= body * 0.3 and (low_in_ema_zone or open_in_ema_zone)
 
         return wick_rejection or body_rejection
 
@@ -405,7 +410,7 @@ class NiftyEMARejectionStrategyOptions:
                 (lower_wick < 4
                  and upper_wick >= 10
                  and o > c
-                 and open_in_ema_zone)
+                 and (open_in_ema_zone or high_in_ema_zone))
                 or
                 (o < ema15
                  and o > c
@@ -421,7 +426,7 @@ class NiftyEMARejectionStrategyOptions:
         )
 
         # Body-based bearish rejection
-        body_rejection = body >= 10 and lower_wick <= body * 0.3 and high_in_ema_zone
+        body_rejection = body >= 10 and lower_wick <= body * 0.3 and (high_in_ema_zone or open_in_ema_zone)
 
         return wick_rejection or body_rejection
 

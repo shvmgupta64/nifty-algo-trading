@@ -33,6 +33,7 @@ START_DATE = "2025-11-18"
 END_DATE   = "2025-11-24"
 TIMEFRAME  = "5minute"
 NIFTY_TOKEN = 256265
+INDIA_VIX_TOKEN = 264969   # Zerodha instrument token for INDIA VIX
 RR_RATIO   = 2
 QTY        = 50    # lot size multiplier if you want later
 
@@ -103,6 +104,8 @@ class BacktestEngine:
     # ------------ MAIN LOOP ------------
     def run(self):
         self.nifty_df = self.load_nifty()
+        vix_df = self.load_india_vix()
+
 
         for i in range(30, len(self.nifty_df)):
             row = self.nifty_df.iloc[i]
@@ -142,6 +145,7 @@ class BacktestEngine:
         - ATM Option trade
         """
         row = self.nifty_df.iloc[idx]
+        vix_entry = row["vix"]
         atm = atm_strike(row["close"])
         signal_time = row["date"]
 
@@ -368,6 +372,21 @@ class BacktestEngine:
         df["ema30"]   = ema(df["close"], 21)
         df["slope20"] = calculate_angle(df["ema20"])
         return df
+
+    #------------Load India VIX ---------------
+    def load_india_vix(self):
+        start = datetime.strptime(START_DATE, "%Y-%m-%d")
+        end = datetime.strptime(END_DATE, "%Y-%m-%d")
+
+        data = self.client.get_historical_candles(
+            INDIA_VIX_TOKEN, start, end, TIMEFRAME
+        )
+
+        df = pd.DataFrame(data)
+        df["date"] = pd.to_datetime(df["date"]).dt.tz_localize(None)
+        df.rename(columns={"close": "vix"}, inplace=True)
+
+        return df[["date", "vix"]]
 
     # ------------ EXPORT CSV ------------
 

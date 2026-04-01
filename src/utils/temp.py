@@ -259,6 +259,5 @@ if __name__ == "__main__":
     symbol = get_nifty_option_symbol(ltp, trend)
     resolved_symbol, token = get_instrument_token(symbol)
 
-    print(symbol)
     print("✅ Trading Symbol :", resolved_symbol)
     print("✅ Instrument Token:", token)
